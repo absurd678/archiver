@@ -76,19 +76,32 @@ void processArchive(FILE* archiveFile) {
     char buffer[BUFFSIZE];
     while (fgets(buffer, BUFFSIZE, archiveFile)) {
         char *filename = strtok(buffer, " | ");
-        long size = atol(strtok(NULL, "\n"));
+        long size = atol(strtok(NULL, " | "));
+
+        
+
         FILE* file_to_write = fopen(filename, "ab+");
         if (!file_to_write) {
             fprintf(stderr, "Error opening files\n");
             exit(EXIT_FAILURE);
         }
-        char *data = strtok(NULL, "\n");
+        fgets(buffer, BUFFSIZE, archiveFile);
+        char *data = strtok(buffer, "\n");
         size_t total_bytes_written = 0;
         while ((total_bytes_written = fwrite(data, 1, strlen(data), file_to_write)) > 0) {
             data += total_bytes_written;
         }
         fclose(file_to_write);
     }
+}
+
+void testProcessArchive(FILE* archiveFile) {
+    char buffer[BUFFSIZE];
+    fgets(buffer, BUFFSIZE, archiveFile);
+    char *filename = strtok(buffer, " | ");
+    char * size = (strtok(NULL, " | "));
+    
+    printf("size: %s\n", size);
 }
 
 
