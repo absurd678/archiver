@@ -108,28 +108,43 @@ void processArchive(FILE* archiveFile) {
     }
 }
 
-void createNewDirectory(char * filename){
-    DIR *dp;
-    struct dirent *entry;
-    struct stat statbuf;
+void createNewDirectory(const char *filename) {
+    char path[BUFFSIZE];
+    strncpy(path, filename, BUFFSIZE);
 
-    if ((dp = opendir(filename))!= NULL) {  // if the directory already exists
-        closedir(dp);
-        printf("%s already exists.\n", filename);
-        return;
-    }
+    // Используем отдельный указатель для работы с директориями
+    char *dir = strtok(path, "/");
+    char current_path[BUFFSIZE] = "";
 
-    char *dir = strtok(filename, "/");
-    char full_path_dir[BUFFSIZE];
-    while((dp=opendir(realpath(dir, full_path_dir)))!= NULL) { // procceed to the unknown directory
-        chdir(dir);
-        dir = strtok(NULL, "/");
-    }
-    
-    // create a new directory
-    while (dir && (stat(dir, &statbuf) != 0 || !S_ISDIR(statbuf.st_mode))) {
-        mkdir(dir, 0777);
-        chdir(dir);
-        dir = strtok(NULL, "/");
+    while (dir != NULL) {
+        // Проверяем, есть ли в следующем токене символ '/', чтобы понять, что это не файл
+        char *next_part = strtok(NULL, "/");
+
+        // Если это последняя часть пути (имя файла), то выходим из цикла
+        if (next_part == NULL) {
+            printf("File to create: %s\n", dir); // Здесь будет обработка создания файла в будущем
+            break;
+        }
+
+        // Строим путь до директории
+        strcat(current_path, dir);
+        strcat(current_path, "/");
+
+        struct stat statbuf;
+        if (stat(current_path, &statbuf) != 0) {
+            // Директории не существует, создаем ее
+            if (mkdir(current_path, 0777) != 0) {
+                perror("Error creating directory");
+                exit(EXIT_FAILURE);
+            }
+            printf("Created directory: %s\n", current_path);
+        } else if (!S_ISDIR(statbuf.st_mode)) {
+            // Существующий путь - не директория, ошибка
+            fprintf(stderr, "%s exists but is not a directory\n", current_path);
+            exit(EXIT_FAILURE);
+        }
+
+        // Переходим к следующей части пути
+        dir = next_part;
     }
 }
