@@ -99,25 +99,33 @@ void processDir(char *dir, FILE* file_out) {
 void processArchive(FILE* archiveFile) {
     char buffer[BUFFSIZE];
     while (fgets(buffer, BUFFSIZE, archiveFile)) {
+        char original_filename[BUFFSIZE]; // Store the original path before createNewDirectory() called
+        
         char *filename = strtok(buffer, " | ");
         long size = atol(strtok(NULL, " | "));
+        strncpy(original_filename, filename, BUFFSIZE); //save the original path before createNewDirectory() called
 
         // Recover the directory structure
         createNewDirectory(strtok(filename, "/"), "");
 
-        // Put the data into the dearchived file
-        FILE* file_to_write = fopen(filename, "ab+");
+        // Create a new file in the decompressed directory
+        FILE* file_to_write = fopen(original_filename, "wb");
         if (!file_to_write) {
             fprintf(stderr, "Error opening files\n");
             exit(EXIT_FAILURE);
         }
-        char *data = strtok(NULL, "\n");
-        size_t total_bytes_written = 0;
-        while ((total_bytes_written = fwrite(data, 1, strlen(data), file_to_write)) > 0) {
-            data += total_bytes_written;
+        // Put the data into the dearchived file
+        char* data;
+        size_t total_bytes_copied = 0;
+        while ((total_bytes_copied = fread(data, 1, size, file_to_write)) > 0) {
+            if (fwrite(data, 1, total_bytes_copied, file_to_write)!= total_bytes_copied) {
+                perror("Error writing to decompressed file\n");
+                fclose(file_to_write);
+                exit(1);
+            }
         }
         fclose(file_to_write);
-        
+
     }
 }
 
