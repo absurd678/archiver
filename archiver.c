@@ -9,6 +9,30 @@
 const int BUFFSIZE = 1024;
 //const int PATH_MAX = 4096;
 
+
+//-----------------PROTOTYPES-----------------
+void archiveFile(char *dir, FILE* file_out);
+void processDir(char *dir, FILE* file_out);
+void createNewDirectory(char * filename);
+void processArchive(FILE* archiveFile);
+
+
+//-----------------MAIN FUNCTION-----------------
+
+int main(int argc, char* argv[]) {
+    char *topdir = ".";
+    if (argc >= 2) topdir = argv[1];
+    printf("Directory scan of %s\n", topdir);
+
+    FILE* file_out = fopen("outArchiver.txt", "r");
+    processArchive(file_out);
+    printf("done.\n");
+    fclose(file_out);
+    exit(0);
+}
+
+//-----------------IMPLEMENTATION OF FUNCTIONS-----------------
+
 void archiveFile(char *dir, FILE* file_out){
     const int buffSize = 256;
 
@@ -78,41 +102,34 @@ void processArchive(FILE* archiveFile) {
         char *filename = strtok(buffer, " | ");
         long size = atol(strtok(NULL, " | "));
 
-        
+        createNewDirectory(filename);
 
-        FILE* file_to_write = fopen(filename, "ab+");
-        if (!file_to_write) {
-            fprintf(stderr, "Error opening files\n");
-            exit(EXIT_FAILURE);
-        }
-        fgets(buffer, BUFFSIZE, archiveFile);
-        char *data = strtok(buffer, "\n");
-        size_t total_bytes_written = 0;
-        while ((total_bytes_written = fwrite(data, 1, strlen(data), file_to_write)) > 0) {
-            data += total_bytes_written;
-        }
-        fclose(file_to_write);
+
     }
 }
 
-void testProcessArchive(FILE* archiveFile) {
-    char buffer[BUFFSIZE];
-    fgets(buffer, BUFFSIZE, archiveFile);
-    char *filename = strtok(buffer, " | ");
-    char * size = (strtok(NULL, " | "));
+void createNewDirectory(char * filename){
+    DIR *dp;
+    struct dirent *entry;
+    struct stat statbuf;
+
+    if ((dp = opendir(filename))!= NULL) {  // if the directory already exists
+        closedir(dp);
+        printf("%s already exists.\n", filename);
+        return;
+    }
+
+    char *dir = strtok(filename, "/");
+    char full_path_dir[BUFFSIZE];
+    while((dp=opendir(realpath(dir, full_path_dir)))!= NULL) { // procceed to the unknown directory
+        chdir(dir);
+        dir = strtok(NULL, "/");
+    }
     
-    printf("size: %s\n", size);
-}
-
-
-int main(int argc, char* argv[]) {
-    char *topdir = ".";
-    if (argc >= 2) topdir = argv[1];
-    printf("Directory scan of %s\n", topdir);
-
-    FILE* file_out = fopen("outArchiver.txt", "r");
-    processArchive(file_out);
-    printf("done.\n");
-    fclose(file_out);
-    exit(0);
+    // create a new directory
+    while (dir && (stat(dir, &statbuf) != 0 || !S_ISDIR(statbuf.st_mode))) {
+        mkdir(dir, 0777);
+        chdir(dir);
+        dir = strtok(NULL, "/");
+    }
 }
