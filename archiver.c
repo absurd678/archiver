@@ -13,7 +13,7 @@ const int BUFFSIZE = 1024;
 //-----------------PROTOTYPES-----------------
 void archiveFile(char *dir, FILE* file_out);
 void processDir(char *dir, FILE* file_out);
-void createNewDirectory(char *curr_dir);
+void createNewDirectory(char *curr_dir, char *base_path);
 void processArchive(FILE* archiveFile);
 
 
@@ -101,55 +101,25 @@ void processArchive(FILE* archiveFile) {
     while (fgets(buffer, BUFFSIZE, archiveFile)) {
         char *filename = strtok(buffer, " | ");
         long size = atol(strtok(NULL, " | "));
-        char * dir = strtok(filename, "/");
-        createNewDirectory(dir);
 
+        // Recover the directory structure
+        createNewDirectory(strtok(filename, "/"), "");
 
-    }
-}
-
-/*
-void createNewDirectory(char *filename) {
-    char path[BUFFSIZE];
-    strncpy(path, filename, BUFFSIZE);
-
-    // Используем отдельный указатель для работы с директориями
-    char *dir = strtok(path, "/");
-    char current_path[BUFFSIZE] = "";
-
-    while (dir != NULL) {
-        // Проверяем, есть ли в следующем токене символ '/', чтобы понять, что это не файл
-        char *next_part = strtok(NULL, "/");
-
-        // Если это последняя часть пути (имя файла), то выходим из цикла
-        if (next_part == NULL) {
-            printf("File to create: %s\n", dir); // Здесь будет обработка создания файла в будущем
-            break;
-        }
-
-        // Строим путь до директории
-        strcat(current_path, dir);
-        strcat(current_path, "/");
-
-        struct stat statbuf;
-        if (stat(current_path, &statbuf) != 0) {
-            // Директории не существует, создаем ее
-            if (mkdir(current_path, 0777) != 0) {
-                perror("Error creating directory");
-                exit(EXIT_FAILURE);
-            }
-            printf("Created directory: %s\n", current_path);
-        } else if (!S_ISDIR(statbuf.st_mode)) {
-            // Существующий путь - не директория, ошибка
-            fprintf(stderr, "%s exists but is not a directory\n", current_path);
+        // Put the data into the dearchived file
+        FILE* file_to_write = fopen(filename, "ab+");
+        if (!file_to_write) {
+            fprintf(stderr, "Error opening files\n");
             exit(EXIT_FAILURE);
         }
-
-        // Переходим к следующей части пути
-        dir = next_part;
+        char *data = strtok(NULL, "\n");
+        size_t total_bytes_written = 0;
+        while ((total_bytes_written = fwrite(data, 1, strlen(data), file_to_write)) > 0) {
+            data += total_bytes_written;
+        }
+        fclose(file_to_write);
+        
     }
 }
-*/
 
 // Рекурсивная функция для создания директорий
 void createNewDirectory(char *curr_dir, char *base_path) {
