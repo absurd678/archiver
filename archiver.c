@@ -151,37 +151,40 @@ void createNewDirectory(char *filename) {
 }
 */
 
-void createNewDirectory(char *curr_dir) {
-    char *current_path;
-    if (curr_dir != NULL) {
-        // Проверяем, есть ли в следующем токене символ '/', чтобы понять, что это не файл
-        char *next_part = strtok(NULL, "/");
+// Рекурсивная функция для создания директорий
+void createNewDirectory(char *curr_dir, char *base_path) {
+    if (curr_dir == NULL) {
+        return; // Если нет больше частей пути, выходим
+    }
 
-        // Если это последняя часть пути (имя файла), то выходим из цикла
-        if (next_part == NULL) {
-            printf("File to create: %s\n", curr_dir); // Здесь будет обработка создания файла в будущем
-            return;
-        }
+    // Получаем следующую часть пути
+    char *next_part = strtok(NULL, "/");
 
-        // Строим путь до директории
-        strcat(current_path, curr_dir);
-        strcat(current_path, "/");
+    // Строим полный путь для текущей директории
+    char current_path[BUFFSIZE];
+    snprintf(current_path, BUFFSIZE, "%s/%s", base_path, curr_dir);
 
-        struct stat statbuf;
-        if (stat(current_path, &statbuf) != 0) {
-            // Директории не существует, создаем ее
-            if (mkdir(curr_dir, 0777) != 0) {
-                perror("Error creating directory");
-                exit(EXIT_FAILURE);
-            }
-            printf("Created directory: %s\n", current_path);
-        } else if (!S_ISDIR(statbuf.st_mode)) {
-            // Существующий путь - не директория, ошибка
-            fprintf(stderr, "%s exists but is not a directory\n", current_path);
+    if (next_part == NULL) {
+        // Если это последняя часть пути, значит, это файл
+        printf("File to create: %s\n", current_path); // Обработка файла в будущем
+        return;
+    }
+
+    // Проверяем, существует ли директория
+    struct stat statbuf;
+    if (stat(current_path, &statbuf) != 0) {
+        // Директории не существует, создаем ее
+        if (mkdir(current_path, 0777) != 0) {
+            perror("Error creating directory");
             exit(EXIT_FAILURE);
         }
-
-        // Переходим к следующей части пути
-        createNewDirectory(next_part);
+        printf("Created directory: %s\n", current_path);
+    } else if (!S_ISDIR(statbuf.st_mode)) {
+        // Существующий путь - не директория, ошибка
+        fprintf(stderr, "%s exists but is not a directory\n", current_path);
+        exit(EXIT_FAILURE);
     }
+
+    // Переходим к следующей части пути
+    createNewDirectory(next_part, current_path);
 }
