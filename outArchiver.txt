@@ -1,3 +1,5 @@
+/home/artem/os_labs/archiver/root/child/childtest.txt | 8
+hsdfhsjf
 /home/artem/os_labs/archiver/root/test1.txt | 11
 fdjgijdfigj
 /home/artem/os_labs/archiver/root/test2.txt | 13

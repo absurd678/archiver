@@ -22,8 +22,8 @@ void PrintErr(int errorCode); // Print error code
 
 //-----------------VARIABLES-----------------
 FILE* archiver;  // Archive file
-char* topdir = ".";  // Current directory
-char* archiveFileName;  // Archive file name
+char topdir[BUFFSIZE1024];  // Current directory
+char archiveFileName[buffSize256];  // Archive file name
 int opt;  // Action (1 - archive, 2 - extract)
 int errCode = 0;  // Error code
 
@@ -44,7 +44,8 @@ int main() {
             printf("Write the name of the archive:\n/>");
             scanf("%s", archiveFileName);
 
-            archiver = fopen(archiveFileName, "w");
+            archiver = fopen(archiveFileName, "ab+");
+            
             if ((errCode = processDir(topdir, archiver))!=0){
                 PrintErr(errCode);
                 fclose(archiver);
