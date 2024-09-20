@@ -1,4 +1,4 @@
-/home/artem/os_labs/archiver/root/test1.txt | 15
-data to archive
-/home/artem/os_labs/archiver/root/test2.txt | 17
-data to archive 2
+/home/artem/os_labs/archiver/root/test1.txt | 11
+fdjgijdfigj
+/home/artem/os_labs/archiver/root/test2.txt | 13
+iidfoihsifhsd
