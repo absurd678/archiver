@@ -11,7 +11,9 @@ const int buffSize256 = 256;
 const int pATH_MAX = 4096; // Maximum path length
 
 // TODO: Replace hardcoded paths with environment variables
-const char* DEFAULT_PATH = "/home/artem/os_labs/archiver"; // Default path for archive file
+const char *DEFAULT_PATH = "/home/artem/os_labs/archiver"; // Default path for archive file
+char *ENCRYPTION_PATH = "/home/artem/os_labs/archiver/encode";
+
 
 // Error codes
 const int ERR_OPN_DIR = 1;
@@ -23,20 +25,22 @@ const int ERR_CRT_DIR = 6;
 const int ERR_EXTR = 7;
 const int ERR_PTH_ARCH = 8;
 
-
-
 //-----------------PROTOTYPES-----------------
 int archiveFile(char *dir, size_t root_size, FILE *file_out); // Archive file
 int processDir(char *dir, FILE *file_out, size_t root_size);  //
 int createNewDirectory(char *curr_dir, char *base_path);      // Create new directory
 int processArchive(FILE *archiveFile, char *top_dir_path);    // Process archive file
 void PrintErr(int errorCode);                                 // Print error code
+int zipDirectory(char *dirPath, char *encryptPath, size_t root_size);
+int encode(char *dirPath, char *encryptPath, size_t root_size);
+char* encode_line(char* line);
+
 
 //-----------------VARIABLES-----------------
 FILE *archiver;                    // Archive file
 char topdir[BUFFSIZE1024];         // Current directory
 char archiveFileName[buffSize256]; // Archive file name
-int opt;                           // Action (1 - archive, 2 - extract)
+int option;                           // Action (1 - archive, 2 - extract)
 int errCode = 0;                   // Error code
 char res[buffSize256];             // Response from user
 char extractName[buffSize256];     // Extract directory name
@@ -47,16 +51,22 @@ int main()
 {
 
     printf("Choose the action:\n1. Archive\n2. Extract\n/>");
-    scanf("%d", &opt);
+    scanf("%d", &option);
 
-    switch (opt)
+    switch (option)
     {
 
     case 1: // Archive
 
         printf("Write the realpath of the directory to archive:\n/>");
         scanf("%s", topdir);
-
+        // encoding the directory
+        errCode = zipDirectory(topdir, ENCRYPTION_PATH, 0);
+        if (errCode != 0){
+            PrintErr(errCode);
+            break;
+        }
+/*
         printf("Put the archive by default? (Y/N)\n/>");
         scanf("%s", res);
         if (res[0] == 'N' || res[0] == 'n')
@@ -76,7 +86,7 @@ int main()
         archiver = fopen(archiveFileName, "ab+");
 
         // Archiving - not correct, we need just the names of the files!
-        if ((errCode = processDir(topdir, archiver, strlen(topdir))) != 0)
+        if ((errCode = processDir(ENCRYPTION_PATH, archiver, strlen(ENCRYPTION_PATH))) != 0)
         {
             PrintErr(errCode);
             fclose(archiver);
@@ -85,6 +95,7 @@ int main()
         printf("Archive created successfully with path:\n");
         printf("%s\n", realpath(archiveFileName, NULL));
         fclose(archiver);
+        */
         break;
 
     case 2: // Extract
@@ -110,7 +121,9 @@ int main()
                 PrintErr(ERR_OPN_DIR);
                 break;
             }
-        } else {
+        }
+        else
+        {
             strcpy(res, DEFAULT_PATH);
         }
         // Ask for the extract directory name
@@ -362,4 +375,116 @@ void PrintErr(int errorCode)
         fprintf(stderr, "Unknown error code: %d\n", errorCode);
         break;
     }
+}
+
+int zipDirectory(char *dirPath, char *encryptPath, size_t root_size)
+{
+    DIR *dp;
+    struct dirent *entry;
+    struct stat statbuf;
+    int errCode = 0;
+    char *encFoldName;   // to save the hierarchy
+    char *newEncrypPath; // to mkdir in the encryption directory
+
+    if ((dp = opendir(dirPath)) == NULL)
+    {
+        return ERR_OPN_DIR;
+    }
+    chdir(dirPath);
+
+    //printf("encFoldName: %s", encFoldName);
+    if (root_size!=0){
+        // Put the path and size of the file
+        char full_path[pATH_MAX];
+        realpath(dirPath, full_path);
+
+        // full_path = full_path - top_dir_path
+        encFoldName = full_path + root_size;
+        newEncrypPath = (char *)malloc(strlen(encryptPath) + strlen(encFoldName) + 2); // +1 for '/', +1 for '\0'
+        strcpy(newEncrypPath, encryptPath);
+        strcat(newEncrypPath, encFoldName);
+        mkdir(newEncrypPath, 0777);
+    } else {
+        newEncrypPath = encryptPath;
+    }
+
+    // Process current directory
+    while ((entry = readdir(dp)) != NULL)
+    {
+        lstat(entry->d_name, &statbuf);
+        if (S_ISDIR(statbuf.st_mode))
+        {
+            /* Finds the directory but ignores . and .. */
+            if (strcmp(".", entry->d_name) == 0 || strcmp("..", entry->d_name) == 0)
+                continue;
+            // Enters a new directory
+            if ((errCode = zipDirectory(entry->d_name, newEncrypPath, strlen(dirPath))) != 0)
+            {
+                return errCode;
+            }
+        }
+        else
+        {
+            if ((errCode = encode(entry->d_name, newEncrypPath, strlen(dirPath))) != 0) // Archiving
+            {
+                return errCode;
+            }
+        }
+    }
+    chdir("..");
+    closedir(dp);
+    return 0;
+}
+
+int encode(char *dirPath, char *encryptPath, size_t root_size)
+{
+    int errCode = 0;
+    char *encFileName;   // to save the hierarchy
+    char *newEncrypPath; // to mkdir in the encryption directory
+    FILE* file_in;
+    FILE* file_out;
+    char buffer[BUFFSIZE1024]; // file lines
+    char *encoded_buffer; // encoded file lines
+    
+    // Put the path and size of the file
+    char full_path[pATH_MAX];
+    realpath(dirPath, full_path);
+
+    // full_path = full_path - top_dir_path
+    encFileName = full_path + root_size;
+    newEncrypPath = (char *)malloc(strlen(encryptPath) + strlen(encFileName) + 2); // +1 for '/', +1 for '\0'
+    strcpy(newEncrypPath, encryptPath);
+    strcat(newEncrypPath, encFileName);
+    printf(newEncrypPath, "\tEncrypted file name");
+
+    file_in = fopen(dirPath, "rb");
+    file_out = fopen(newEncrypPath, "wb");
+    if (file_out==NULL){
+        return ERR_OPN_FILE;
+    }
+
+    while(fgets(buffer, BUFFSIZE1024, file_in)){
+        encoded_buffer = encode_line(buffer);
+        fputs(encoded_buffer, file_out);
+    }
+    return errCode;
+}
+
+char* encode_line(char* line){
+    char* new_line = NULL;
+    size_t len = 0;
+    char *seqlen = NULL;
+    char subseqSymbol = line[0];
+    for (int i=0; i<strlen(line); i++){
+        if (line[i] == subseqSymbol){
+            len++;
+        } else {
+            sprintf(seqlen, "%d", len);
+            strcat(new_line, seqlen);
+            strcat(new_line, &subseqSymbol);
+            subseqSymbol = line[i];
+            len=1;
+        }
+    }
+    return new_line;
 }
