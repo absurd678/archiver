@@ -4,26 +4,26 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <stdlib.h>
-
+/// home/artem/os_labs/archiver/archiver.c
 //-----------------CONSTANTS-----------------
-const int BUFFSIZE1024 = 1024; // Buffer size for reading files
-const int buffSize256 = 256;
-const int pATH_MAX = 4096; // Maximum path length
+#define BUFFSIZE1024 1024 // Buffer size for reading files
+#define buffSize256 256
+#define pATH_MAX 4096 // Maximum path length
 
 // TODO: Replace hardcoded paths with environment variables
-const char* DEFAULT_PATH = "/home/artem/os_labs/archiver"; // Default path for archive file
+const char *DEFAULT_PATH = "/home/artem/os_labs/archiver/archiver.c"; // Default path for archive file
+const char *DEFAULT_ARCH_NAME = "son_arch.geo";
+const char *DEFAULT_NAME = "son_arch";
 
 // Error codes
-const int ERR_OPN_DIR = 1;
-const int ERR_OPN_FILE = 2;
-const int ERR_WRT_ARCH = 3;
-const int ERR_RD_ARCH = 4;
-const int ERR_EXTR_ARCH = 5;
-const int ERR_CRT_DIR = 6;
-const int ERR_EXTR = 7;
-const int ERR_PTH_ARCH = 8;
-
-
+#define ERR_OPN_DIR 1
+#define ERR_OPN_FILE 2
+#define ERR_WRT_ARCH 3
+#define ERR_RD_ARCH 4
+#define ERR_EXTR_ARCH 5
+#define ERR_CRT_DIR 6
+#define ERR_EXTR 7
+#define ERR_PTH_ARCH 8
 
 //-----------------PROTOTYPES-----------------
 int archiveFile(char *dir, size_t root_size, FILE *file_out); // Archive file
@@ -46,7 +46,7 @@ char extractName[buffSize256];     // Extract directory name
 int main()
 {
 
-    printf("Choose the action:\n1. Archive\n2. Extract\n/>");
+    printf("Выберете действие:\n1. Архивировать\n2. Разархивировать\n/>");
     scanf("%d", &opt);
 
     switch (opt)
@@ -54,22 +54,23 @@ int main()
 
     case 1: // Archive
 
-        printf("Write the realpath of the directory to archive:\n/>");
+        printf("Напишите полный путь, где находится папка:\n/>");
         scanf("%s", topdir);
 
-        printf("Put the archive by default? (Y/N)\n/>");
+        printf("Положить архив в папку по умолчанию? (Y/N)\n/>");
         scanf("%s", res);
         if (res[0] == 'N' || res[0] == 'n')
         {
-            printf("Enter the realpath of the directory to archive:\n/>");
+            printf("Напишите полный путь, куда положить архив:\n/>");
             scanf("%s", archiveFileName);
             if (fopen(archiveFileName, "r") == NULL) // error if the directory does not exist
             {
                 PrintErr(ERR_OPN_DIR);
                 break;
             }
+            strcat(archiveFileName, "/");
         }
-        printf("Write the name of the archive:\n/>");
+        printf("Придумайте имя для архива:\n/>");
         scanf("%s", res);
 
         strcat(archiveFileName, res);
@@ -82,7 +83,7 @@ int main()
             fclose(archiver);
             break;
         }
-        printf("Archive created successfully with path:\n");
+        printf("Архив создан по пути:\n");
         printf("%s\n", realpath(archiveFileName, NULL));
         fclose(archiver);
         break;
@@ -90,7 +91,7 @@ int main()
     case 2: // Extract
 
         // Choosing the archive file
-        printf("Write the realpath of the archive to extract:\n/>");
+        printf("Напишите полный путь к архиву:\n/>");
         scanf("%s", archiveFileName);
         if ((archiver = fopen(archiveFileName, "r")) == NULL)
         {
@@ -99,29 +100,33 @@ int main()
         }
 
         // Choosing the extraction destination
-        printf("Put the archive by default? (Y/N)\n/>");
+        printf("Распаковать в папку по умолчанию? (Y/N)\n/>");
         scanf("%s", res);
         if (res[0] == 'N' || res[0] == 'n')
         {
-            printf("Enter the realpath of the directory for extract:\n/>");
+            printf("Напишите полный путь, куда распаковать:\n/>");
             scanf("%s", res);
             if (fopen(res, "r") == NULL) // error if the directory does not exist
             {
                 PrintErr(ERR_OPN_DIR);
                 break;
             }
-        } else {
+            strcat(res, "/");
+        }
+        else
+        {
             strcpy(res, DEFAULT_PATH);
         }
         // Ask for the extract directory name
-        printf("Write the extract directory name:\n/>");
+        printf("Придумайте имя для распакованной папки:\n/>");
         scanf("%s", extractName);
         strcat(res, "/");
         strcat(res, extractName);
 
         // Extracting
+        printf("Ext extract %s\n", res);
         processArchive(archiver, res);
-        printf("Extracted successfully with path:\n");
+        printf("Распаковано по пути:\n");
         printf("%s\n", realpath(res, NULL));
         fclose(archiver);
         break;
@@ -239,13 +244,30 @@ int processArchive(FILE *archiveFile, char *top_dir_path)
         strcat(newPath, filename);
         strncpy(original_filename, newPath, BUFFSIZE1024); // save the original path before createNewDirectory() called
 
+        printf("newPath %s\n", newPath);
+        printf("top_dir_path %s\n", top_dir_path);
         if ((errCode = createNewDirectory(strtok(newPath, "/"), "")) != 0)
         {
+            
             return errCode;
         }
 
         // Create a new file in the decompressed directory
-        FILE *file_to_write = fopen(original_filename, "wb");
+        char *extension = strrchr(original_filename, '.');
+        FILE *file_to_write;
+        char *helppath = (char *)malloc(strlen(DEFAULT_PATH) + strlen(DEFAULT_ARCH_NAME) + 1);
+        if (extension != NULL && strcmp(extension, ".geo") == 0)
+        {
+            strcpy(helppath, DEFAULT_PATH);
+            strcat(helppath, "/");
+            strcat(helppath, DEFAULT_ARCH_NAME);
+            file_to_write = fopen(helppath, "wb");
+        }
+        else
+        {
+            file_to_write = fopen(original_filename, "wb");
+        }
+
         if (!file_to_write)
         {
             return ERR_OPN_FILE;
@@ -274,6 +296,25 @@ int processArchive(FILE *archiveFile, char *top_dir_path)
         free(data);
         free(newPath);
         fclose(file_to_write);
+
+        if (extension != NULL && strcmp(extension, ".geo") == 0)
+        {
+            printf(" creating new directory with    extension\n");
+            FILE *inner_archive = fopen(helppath, "r");
+            if (!inner_archive)
+            {
+                printf("error");
+                return ERR_OPN_FILE;
+            }
+
+            char *innerPath = (char *)malloc(strlen(original_filename) + strlen(DEFAULT_ARCH_NAME) + 1); // +1 for '/', +1 for '\0'
+            strcpy(innerPath, original_filename);
+            char *last_slash = strrchr(innerPath, '/'); // Находим последнее вхождение '/'
+            sprintf(last_slash + 1, "%s", DEFAULT_NAME);
+
+            printf("%s\n", innerPath);
+            processArchive(inner_archive, innerPath);
+        }
 
         // Skip to the next line in the archive
         fgets(buffer, BUFFSIZE1024, archiveFile);
